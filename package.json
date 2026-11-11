@@ -1,5 +1,5 @@
 {
-  "name": "solo-holdem",
+  "name": "holdem-dojo",
   "version": "1.0.0",
   "description": "오프라인에서 AI 상대와 혼자 하는 노리밋 텍사스 홀덤",
   "private": true,
