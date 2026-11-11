@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>솔로 홀덤</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>♠ 솔로 홀덤</h1>
+    <div id="stats"></div>
+    <div class="opts">
+      <label>상대 <select id="optN"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>명</label>
+      <label>속도 <select id="optSpeed"><option value="1.6">느림</option><option value="1">보통</option><option value="0.4">빠름</option></select></label>
+      <label>표시 <select id="optUnit"><option value="chip">칩</option><option value="bb">BB</option></select></label>
+      <label><input type="checkbox" id="optManual"> 수동 진행</label>
+      <label><input type="checkbox" id="optHint"> 승률 힌트</label>
+      <button class="sbtn" id="bNew">새 게임</button>
+      <button class="sbtn" id="bFull">전체화면</button>
+    </div>
+  </header>
+  <main>
+    <div id="tableWrap"><div id="table">
+      <div id="felt"></div>
+      <div id="center"><div id="pot"></div><div id="board"></div><div id="msg"></div></div>
+      <div id="seats"></div>
+    </div></div>
+    <div id="controls">
+      <div id="hint"></div>
+      <div class="row" id="actRow">
+        <button class="btn fold" id="bFold">폴드<kbd>F</kbd></button>
+        <button class="btn call" id="bCall">체크<kbd>C</kbd></button>
+        <button class="btn raise" id="bRaise">레이즈<kbd>R</kbd></button>
+      </div>
+      <div class="row" id="raiseRow">
+        <button class="sbtn" data-f="min"><kbd>1</kbd> 최소</button>
+        <button class="sbtn" data-f="0.33"><kbd>2</kbd> ⅓ 팟</button>
+        <button class="sbtn" data-f="0.5"><kbd>3</kbd> ½ 팟</button>
+        <button class="sbtn" data-f="0.67"><kbd>4</kbd> ⅔ 팟</button>
+        <button class="sbtn" data-f="1"><kbd>5</kbd> 팟</button>
+        <button class="sbtn" data-f="max"><kbd>6</kbd> 올인</button>
+        <input type="range" id="rSlider" step="10">
+        <input type="number" id="rNum" step="10">
+      </div>
+      <div class="row"><button class="btn next" id="bNext">게임 시작<kbd>Space</kbd></button></div>
+      <div id="keys">F 폴드 · C 체크/콜 · R 벳/레이즈 · 1~6 사이즈 · ↑↓ 금액(Shift 5배) · Space 계속/다음 핸드 · U 칩/BB · M 수동 진행 · H 힌트</div>
+    </div>
+  </main>
+  <aside>
+    <h2>GTO 근사 전략</h2>
+    <div id="gto"></div>
+    <h2>진행 기록</h2>
+    <div id="log"></div>
+  </aside>
+</div>
+<script src="js/cards.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
