@@ -1,17 +1,17 @@
 'use strict';
-// 게임 진행: 딜, 베팅 라운드, 쇼다운, 사이드 팟, 아웃 처리
-/* ---------- 게임 상태 ---------- */
+// Game flow: dealing, betting rounds, showdown, side pots, eliminations
+/* ---------- Game state ---------- */
 const BOT_DEFS = [
-  { name: '민준', emoji: '🧐', tight: 0.8, aggr: 0.4, bluff: 0.05 },
-  { name: '서연', emoji: '😎', tight: 0.4, aggr: 0.8, bluff: 0.15 },
-  { name: '도윤', emoji: '🤠', tight: 0.15, aggr: 0.35, bluff: 0.08 },
-  { name: '지우', emoji: '🦊', tight: 0.55, aggr: 0.6, bluff: 0.12 },
-  { name: '하준', emoji: '🤪', tight: 0.1, aggr: 0.9, bluff: 0.25 },
+  { name: 'Minjun', emoji: '🧐', tight: 0.8, aggr: 0.4, bluff: 0.05 },
+  { name: 'Seoyeon', emoji: '😎', tight: 0.4, aggr: 0.8, bluff: 0.15 },
+  { name: 'Doyun', emoji: '🤠', tight: 0.15, aggr: 0.35, bluff: 0.08 },
+  { name: 'Jiwoo', emoji: '🦊', tight: 0.55, aggr: 0.6, bluff: 0.12 },
+  { name: 'Hajun', emoji: '🤪', tight: 0.1, aggr: 0.9, bluff: 0.25 },
 ];
 const G = { players: [], dealer: 0, deck: [], board: [], currentBet: 0, minRaise: BB, street: '', handNo: 0, busy: false, reveal: false, turn: -1, result: '' };
 
 function setupGame(nOpp) {
-  G.players = [{ name: '나', emoji: '🙂', human: true, tight: 0.5, aggr: 0.6, bluff: 0.1 }];
+  G.players = [{ name: 'You', emoji: '🙂', human: true, tight: 0.5, aggr: 0.6, bluff: 0.1 }];
   for (const d of shuffle(BOT_DEFS.slice()).slice(0, nOpp)) G.players.push(Object.assign({ human: false }, d));
   for (const p of G.players) Object.assign(p, { chips: START, buyins: 1, cards: [], folded: false, allIn: false, bet: 0, total: 0, last: '', lastAmt: null, raises: 0, win: 0, handName: '', score: 0, nH: 0, nV: 0, nR: 0, nAgg: 0, nCall: 0, nPass: 0, v: false, r: false, out: false });
   G.over = '';
@@ -24,8 +24,8 @@ const inHand = () => G.players.filter(p => !p.folded);
 const potTotal = () => G.players.reduce((s, p) => s + p.total, 0);
 const sleep = ms => (HEADLESS || ms <= 0) ? Promise.resolve() : new Promise(r => setTimeout(r, ms));
 const D = ms => ms * speed * (G.players[0].folded ? 0.35 : 1);
-let waitStep = ms => sleep(D(ms)); // 수동 진행 모드에서는 키 입력을 기다림 (UI에서 교체)
-// 아래 훅들은 브라우저에서 js/ui.js가 실제 구현으로 교체한다 (테스트에서는 그대로 no-op)
+let waitStep = ms => sleep(D(ms)); // in step mode this waits for a key press (replaced by the UI)
+// These hooks are replaced with real implementations by js/ui.js in the browser (no-ops in tests)
 let log = () => {}, render = () => {}, humanAction = () => Promise.resolve({ type: 'fold' });
 
 function post(i, amt, label) {
@@ -33,7 +33,7 @@ function post(i, amt, label) {
   p.chips -= a; p.bet += a; p.total += a; p.last = label; p.lastAmt = a;
   if (p.chips === 0) p.allIn = true;
 }
-// 성향 통계: VPIP / PFR / 포스트플랍 공격 빈도
+// Tendency stats: VPIP / PFR / postflop aggression
 function track(p, type) {
   if (G.street === 'preflop') {
     if (type !== 'raise' && type !== 'call') return;
@@ -47,9 +47,9 @@ async function playHand() {
   if (G.busy || G.over) return;
   G.busy = true; G.handNo++;
   const P = G.players, n = P.length;
-  log(`— 핸드 #${G.handNo} —`, 'h');
+  log(`— Hand #${G.handNo} —`, 'h');
   for (const p of P) {
-    // 아웃된 플레이어는 매 핸드 폴드 상태로 두어 모든 진행에서 건너뜀
+    // Eliminated players start every hand folded so the rest of the flow skips them
     Object.assign(p, { cards: [], folded: p.out, allIn: false, bet: 0, total: 0, last: '', lastAmt: null, raises: 0, win: 0, handName: '', score: 0, v: false, r: false });
     if (!p.out) p.nH++;
   }
@@ -63,16 +63,16 @@ async function playHand() {
   post(sb, SB, 'SB'); post(bb, BB, 'BB');
   G.currentBet = BB;
   for (let r = 0; r < 2; r++) for (let k = 1; k <= n; k++) { const q = P[(G.dealer + k) % n]; if (!q.out) q.cards.push(G.deck.pop()); }
-  log(`내 카드: ${P[0].cards.map(cardText).join(' ')}`, 'me');
+  log(`Your cards: ${P[0].cards.map(cardText).join(' ')}`, 'me');
   render(); await sleep(D(500));
 
   let alive = await bettingRound((bb + 1) % n);
-  for (const [name, cnt, label] of [['flop', 3, '플랍'], ['turn', 1, '턴'], ['river', 1, '리버']]) {
+  for (const [name, cnt, label] of [['flop', 3, 'Flop'], ['turn', 1, 'Turn'], ['river', 1, 'River']]) {
     if (!alive) break;
     endStreet();
     if (canActCount() <= 1) G.reveal = true;
     render();
-    await waitStep(G.reveal ? 1100 : 600, label + ' 오픈');
+    await waitStep(G.reveal ? 1100 : 600, 'deal the ' + label.toLowerCase());
     G.street = name;
     for (let k = 0; k < cnt; k++) G.board.push(G.deck.pop());
     streetCache();
@@ -82,12 +82,12 @@ async function playHand() {
   }
   endStreet();
   showdown();
-  // 핸드 종료 후에는 폴드한 패까지 전부 공개
+  // Once the hand is over, reveal every hand including the folded ones
   for (const p of P) if (!p.out && !p.handName) p.handName = handName(evalHand(p.cards.concat(G.board)));
   const mucked = P.filter(p => p.folded && !p.human && !p.out);
-  if (mucked.length) log('폴드한 패: ' + mucked.map(p => `${p.name} ${p.cards.map(cardText).join(' ')}`).join(' / '));
-  // 칩을 모두 잃으면 아웃
-  for (const p of P) if (!p.out && p.chips <= 0) { p.out = true; log(`${p.name} 아웃`, 'h'); }
+  if (mucked.length) log('Folded hands: ' + mucked.map(p => `${p.name} ${p.cards.map(cardText).join(' ')}`).join(' / '));
+  // Out of chips means out of the game
+  for (const p of P) if (!p.out && p.chips <= 0) { p.out = true; log(`${p.name} is out`, 'h'); }
   if (P[0].out) G.over = 'lose';
   else if (P.filter(p => !p.out).length === 1) G.over = 'win';
   G.busy = false;
@@ -108,11 +108,11 @@ async function bettingRound(start) {
     if (inHand().length <= 1) break;
     const p = P[i];
     if (need.has(i)) {
-      if (G.currentBet - p.bet <= 0 && canActCount() <= 1) break; // 혼자 남아 더 걸 상대가 없음
+      if (G.currentBet - p.bet <= 0 && canActCount() <= 1) break; // nobody left to bet against
       G.turn = i; render();
       let act;
       if (p.human && !AUTO) act = await humanAction();
-      else { await waitStep(450 + Math.random() * 550, p.name + ' 차례'); act = botAction(i); }
+      else { await waitStep(450 + Math.random() * 550, p.name + ' to act'); act = botAction(i); }
       const upd = rangeUpdater(i), potB = potTotal(), tc = Math.max(0, G.currentBet - p.bet), chipsB = p.chips;
       const raised = applyAction(i, act);
       upd(raised ? 'raise' : p.folded ? 'fold' : 'call', raised ? (chipsB - p.chips - tc) / Math.max(1, potB + tc) : 0);
@@ -127,7 +127,7 @@ async function bettingRound(start) {
   return inHand().length > 1;
 }
 
-// 반환값: 레이즈(또는 벳)로 액션이 다시 열렸는지
+// Returns whether a bet or raise reopened the action
 function applyAction(i, act) {
   const p = G.players[i];
   const toCall = Math.max(0, G.currentBet - p.bet);
@@ -144,8 +144,8 @@ function applyAction(i, act) {
       const size = to - G.currentBet;
       if (size >= G.minRaise) G.minRaise = size;
       G.currentBet = to; p.raises++;
-      if (p.chips === 0) { p.allIn = true; p.last = '올인'; }
-      else p.last = opened ? '벳' : '레이즈';
+      if (p.chips === 0) { p.allIn = true; p.last = 'All-in'; }
+      else p.last = opened ? 'Bet' : 'Raise';
       p.lastAmt = to;
       track(p, 'raise');
       log(`${p.name}: ${p.last} ${fmt(to)}`, p.human ? 'me' : '');
@@ -156,21 +156,21 @@ function applyAction(i, act) {
   if (type === 'fold' && toCall === 0) type = 'check';
   if (type === 'call' && toCall === 0) type = 'check';
   p.lastAmt = null;
-  if (type === 'fold') { p.folded = true; p.last = '폴드'; track(p, 'fold'); }
+  if (type === 'fold') { p.folded = true; p.last = 'Fold'; track(p, 'fold'); }
   else if (type === 'call') {
     const pay = Math.min(toCall, p.chips);
     p.chips -= pay; p.bet += pay; p.total += pay;
-    if (p.chips === 0) { p.allIn = true; p.last = '올인 콜'; } else p.last = '콜';
+    if (p.chips === 0) { p.allIn = true; p.last = 'All-in call'; } else p.last = 'Call';
     p.lastAmt = pay;
     track(p, 'call');
-  } else { p.last = '체크'; track(p, 'check'); }
+  } else { p.last = 'Check'; track(p, 'check'); }
   log(`${p.name}: ${p.last}${p.lastAmt != null ? ' ' + fmt(p.lastAmt) : ''}`, p.human ? 'me' : '');
   return false;
 }
 
 function showdown() {
   const P = G.players, n = P.length;
-  // 콜 받지 못한 초과 베팅 반환
+  // Return any uncalled part of the biggest bet
   const sorted = P.map(p => p.total).sort((a, b) => b - a);
   if (sorted[0] > sorted[1]) {
     const top = P.find(p => p.total === sorted[0]), ex = sorted[0] - sorted[1];
@@ -181,14 +181,14 @@ function showdown() {
     const w = live[0], amt = potTotal();
     w.chips += amt; w.win = amt;
     P.forEach(p => { p.total = 0; });
-    G.result = `${w.name} 승리 · 팟 ${fmt(amt)}`;
+    G.result = `${w.name} won the pot · ${fmt(amt)}`;
     log(G.result, 'w');
     return;
   }
   G.reveal = true;
   for (const p of live) { p.score = evalHand(p.cards.concat(G.board)); p.handName = handName(p.score); }
   log(live.map(p => `${p.name} ${p.cards.map(cardText).join(' ')} (${p.handName})`).join(' / '));
-  // 사이드 팟 계산
+  // Build side pots
   const contrib = P.map(p => p.total), pots = [];
   for (;;) {
     let m = Infinity;

@@ -1,6 +1,5 @@
 'use strict';
-// 화면 그리기, 버튼·단축키, 설정 (브라우저 전용)
-/* ---------- UI ---------- */
+// Rendering, buttons and shortcuts, settings (browser only)
 let resolveHuman = null, RU = null;
 
 (() => {
@@ -41,7 +40,7 @@ let resolveHuman = null, RU = null;
       const over = !G.busy && G.handNo > 0;
       const show = p.human || over || (G.reveal && !p.folded);
       const cards = (p.folded && !p.human && !over) ? '' : p.cards.map(c => cardHTML(show ? c : null)).join('');
-      if (p.out && !p.cards.length) { p.last = '아웃'; p.lastAmt = null; }
+      if (p.out && !p.cards.length) { p.last = 'Out'; p.lastAmt = null; }
       const cls = ['seat', p.human ? 'me' : '', p.folded || p.out ? 'folded' : '', G.turn === i ? 'turn' : '', p.win > 0 ? 'winner' : ''].join(' ');
       h += `<div class="${cls}" style="left:${50 + 43 * cx}%;top:${50 + 41 * sy}%">
         <div class="cards">${cards}</div>
@@ -57,24 +56,24 @@ let resolveHuman = null, RU = null;
     seatsEl.innerHTML = h;
     boardEl.innerHTML = G.board.map(cardHTML).join('');
     const pot = potTotal();
-    potEl.textContent = pot > 0 ? `팟 ${fmt(pot)}` : '';
+    potEl.textContent = pot > 0 ? `Pot ${fmt(pot)}` : '';
     msgEl.textContent = G.result || '';
     const me = P[0], net = me.chips + me.total - START * me.buyins;
-    statsEl.innerHTML = `핸드 <b>#${G.handNo}</b> · 블라인드 ${SB}/${BB} · 수익 <b style="color:${net >= 0 ? '#7fe3a3' : '#ff8a8a'}">${net >= 0 ? '+' : ''}${fmt(net)}</b>`;
+    statsEl.innerHTML = `Hand <b>#${G.handNo}</b> · Blinds ${SB}/${BB} · Net <b style="color:${net >= 0 ? '#7fe3a3' : '#ff8a8a'}">${net >= 0 ? '+' : ''}${fmt(net)}</b>`;
     renderControls();
   };
 
   function renderGto() {
     const el = $('gto');
-    if (!resolveHuman || !RU || !RU.gto) { el.innerHTML = '<div class="gnote">내 차례가 되면 표시됩니다.</div>'; return; }
+    if (!resolveHuman || !RU || !RU.gto) { el.innerHTML = '<div class="gnote">Shown when it is your turn.</div>'; return; }
     const g = RU.gto, rows = [];
-    if (RU.toCall > 0) rows.push(['폴드', g.fold, '#b8434c']);
-    rows.push([RU.toCall > 0 ? '콜' : '체크', g.call, '#2c6fb5']);
-    if (RU.can) rows.push([G.currentBet === 0 ? '벳' : '레이즈', g.raise, '#c07a12']);
+    if (RU.toCall > 0) rows.push(['Fold', g.fold, '#b8434c']);
+    rows.push([RU.toCall > 0 ? 'Call' : 'Check', g.call, '#2c6fb5']);
+    if (RU.can) rows.push([G.currentBet === 0 ? 'Bet' : 'Raise', g.raise, '#c07a12']);
     const mx = Math.max(...rows.map(r => r[1]));
     el.innerHTML = rows.map(([l, v, c]) => `<div class="grow${v === mx ? ' top' : ''}"><span>${l}</span><div class="gbar"><div style="width:${v * 100}%;background:${c}"></div></div><b>${Math.round(v * 100)}%</b></div>`).join('')
-      + (RU.can && g.raise > 0.05 ? `<div class="gnote">권장 사이즈: ${fmt(g.size)}</div>` : '')
-      + '<div class="gnote">레인지·팟 오즈·MDF 기반 근사치 (솔버 계산 아님)</div>';
+      + (RU.can && g.raise > 0.05 ? `<div class="gnote">Suggested size: ${fmt(g.size)}</div>` : '')
+      + '<div class="gnote">Estimate from ranges, pot odds and MDF (not solver output)</div>';
   }
 
   function renderControls() {
@@ -84,27 +83,27 @@ let resolveHuman = null, RU = null;
     $('raiseRow').classList.toggle('hide', !(my && RU && RU.can));
     bNext.parentElement.classList.toggle('hide', G.busy && !resolveStep);
     if (resolveStep) {
-      bNext.firstChild.textContent = '계속';
-      hintEl.textContent = `다음: ${stepLabel}`;
+      bNext.firstChild.textContent = 'Continue';
+      hintEl.textContent = `Next: ${stepLabel}`;
       return;
     }
     if (!G.busy) {
-      bNext.firstChild.textContent = G.over ? '새 게임' : G.handNo === 0 ? '게임 시작' : '다음 핸드';
-      hintEl.textContent = G.over === 'lose' ? '칩을 모두 잃어 아웃됐습니다. 게임 오버!'
-        : G.over === 'win' ? '모든 상대를 아웃시켰습니다. 우승! 🏆'
-        : G.handNo === 0 ? '버튼을 누르거나 Space 키로 시작하세요.' : '';
+      bNext.firstChild.textContent = G.over ? 'New game' : G.handNo === 0 ? 'Start game' : 'Next hand';
+      hintEl.textContent = G.over === 'lose' ? 'You are out of chips. Game over!'
+        : G.over === 'win' ? 'You knocked out every opponent. You win! 🏆'
+        : G.handNo === 0 ? 'Press the button or Space to start.' : '';
       return;
     }
-    if (!my) { hintEl.textContent = me.folded ? '폴드했습니다. 핸드가 끝나길 기다리는 중…' : '상대 차례…'; return; }
+    if (!my) { hintEl.textContent = me.folded ? 'You folded. Waiting for the hand to finish…' : 'Opponents acting…'; return; }
     const toCall = RU.toCall;
     bFold.disabled = toCall === 0;
-    bCall.firstChild.textContent = toCall === 0 ? '체크' : toCall >= me.chips ? `올인 콜 ${fmt(toCall)}` : `콜 ${fmt(toCall)}`;
+    bCall.firstChild.textContent = toCall === 0 ? 'Check' : toCall >= me.chips ? `All-in call ${fmt(toCall)}` : `Call ${fmt(toCall)}`;
     bRaise.classList.toggle('hide', !RU.can);
-    if (RU.can) bRaise.firstChild.textContent = RU.amt >= RU.maxTo ? `올인 ${fmt(RU.amt)}` : `${G.currentBet === 0 ? '벳' : '레이즈'} ${fmt(RU.amt)}`;
-    let t = `내 패: <b>${RU.hand}</b>`;
+    if (RU.can) bRaise.firstChild.textContent = RU.amt >= RU.maxTo ? `All-in ${fmt(RU.amt)}` : `${G.currentBet === 0 ? 'Bet' : 'Raise'} ${fmt(RU.amt)}`;
+    let t = `Your hand: <b>${RU.hand}</b>`;
     if (hintOn) {
-      t += ` · 승률 약 <b>${Math.round(RU.eq * 100)}%</b> (상대 레인지 추정 기준)`;
-      if (toCall > 0) t += ` · 필요 승률(팟 오즈) <b>${Math.round(toCall / (potTotal() + toCall) * 100)}%</b>`;
+      t += ` · equity ≈ <b>${Math.round(RU.eq * 100)}%</b> (vs. estimated ranges)`;
+      if (toCall > 0) t += ` · needed (pot odds) <b>${Math.round(toCall / (potTotal() + toCall) * 100)}%</b>`;
     }
     hintEl.innerHTML = t;
   }
@@ -143,7 +142,7 @@ let resolveHuman = null, RU = null;
     resolveHuman = null;
     r({ type, amount });
   }
-  function start() { if (G.over) { location.reload(); return; } if (!G.busy) playHand().catch(e => { console.error(e); log('오류: ' + e.message); }); }
+  function start() { if (G.over) { location.reload(); return; } if (!G.busy) playHand().catch(e => { console.error(e); log('Error: ' + e.message); }); }
 
   bFold.onclick = () => act('fold');
   bCall.onclick = () => act('call');
@@ -159,7 +158,7 @@ let resolveHuman = null, RU = null;
     else setRaise(G.currentBet + Math.round((potTotal() + RU.toCall) * +f / SB) * SB);
   }
   presets.forEach(b => { b.onclick = () => applyPreset(b.dataset.f); });
-  // 클릭한 버튼·체크박스에 포커스가 남아 단축키를 가로채지 않도록
+  // Keep clicked buttons and checkboxes from holding focus and swallowing shortcuts
   document.addEventListener('click', e => { const b = e.target.closest('button,input[type=checkbox]'); if (b) b.blur(); });
   document.addEventListener('change', e => { if (e.target.tagName === 'SELECT') e.target.blur(); });
   document.addEventListener('keydown', e => {
@@ -188,7 +187,7 @@ let resolveHuman = null, RU = null;
     }
   });
 
-  // 설정
+  // Settings
   const optN = $('optN'), optSpeed = $('optSpeed'), optHint = $('optHint');
   optN.value = store.get('n', '5');
   optSpeed.value = store.get('speed', '1');

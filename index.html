@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -12,13 +12,13 @@
     <h1>♠ Holdem Dojo</h1>
     <div id="stats"></div>
     <div class="opts">
-      <label>상대 <select id="optN"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>명</label>
-      <label>속도 <select id="optSpeed"><option value="1.6">느림</option><option value="1">보통</option><option value="0.4">빠름</option></select></label>
-      <label>표시 <select id="optUnit"><option value="chip">칩</option><option value="bb">BB</option></select></label>
-      <label><input type="checkbox" id="optManual"> 수동 진행</label>
-      <label><input type="checkbox" id="optHint"> 승률 힌트</label>
-      <button class="sbtn" id="bNew">새 게임</button>
-      <button class="sbtn" id="bFull">전체화면</button>
+      <label>Opponents <select id="optN"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+      <label>Speed <select id="optSpeed"><option value="1.6">Slow</option><option value="1">Normal</option><option value="0.4">Fast</option></select></label>
+      <label>Units <select id="optUnit"><option value="chip">Chips</option><option value="bb">BB</option></select></label>
+      <label><input type="checkbox" id="optManual"> Step mode</label>
+      <label><input type="checkbox" id="optHint"> Equity hint</label>
+      <button class="sbtn" id="bNew">New game</button>
+      <button class="sbtn" id="bFull">Fullscreen</button>
     </div>
   </header>
   <main>
@@ -30,28 +30,28 @@
     <div id="controls">
       <div id="hint"></div>
       <div class="row" id="actRow">
-        <button class="btn fold" id="bFold">폴드<kbd>F</kbd></button>
-        <button class="btn call" id="bCall">체크<kbd>C</kbd></button>
-        <button class="btn raise" id="bRaise">레이즈<kbd>R</kbd></button>
+        <button class="btn fold" id="bFold">Fold<kbd>F</kbd></button>
+        <button class="btn call" id="bCall">Check<kbd>C</kbd></button>
+        <button class="btn raise" id="bRaise">Raise<kbd>R</kbd></button>
       </div>
       <div class="row" id="raiseRow">
-        <button class="sbtn" data-f="min"><kbd>1</kbd> 최소</button>
-        <button class="sbtn" data-f="0.33"><kbd>2</kbd> ⅓ 팟</button>
-        <button class="sbtn" data-f="0.5"><kbd>3</kbd> ½ 팟</button>
-        <button class="sbtn" data-f="0.67"><kbd>4</kbd> ⅔ 팟</button>
-        <button class="sbtn" data-f="1"><kbd>5</kbd> 팟</button>
-        <button class="sbtn" data-f="max"><kbd>6</kbd> 올인</button>
+        <button class="sbtn" data-f="min"><kbd>1</kbd> Min</button>
+        <button class="sbtn" data-f="0.33"><kbd>2</kbd> ⅓ pot</button>
+        <button class="sbtn" data-f="0.5"><kbd>3</kbd> ½ pot</button>
+        <button class="sbtn" data-f="0.67"><kbd>4</kbd> ⅔ pot</button>
+        <button class="sbtn" data-f="1"><kbd>5</kbd> Pot</button>
+        <button class="sbtn" data-f="max"><kbd>6</kbd> All-in</button>
         <input type="range" id="rSlider" step="10">
         <input type="number" id="rNum" step="10">
       </div>
-      <div class="row"><button class="btn next" id="bNext">게임 시작<kbd>Space</kbd></button></div>
-      <div id="keys">F 폴드 · C 체크/콜 · R 벳/레이즈 · 1~6 사이즈 · ↑↓ 금액(Shift 5배) · Space 계속/다음 핸드 · U 칩/BB · M 수동 진행 · H 힌트</div>
+      <div class="row"><button class="btn next" id="bNext">Start game<kbd>Space</kbd></button></div>
+      <div id="keys">F fold · C check/call · R bet/raise · 1-6 sizing · ↑↓ amount (Shift ×5) · Space continue/next hand · U chips/BB · M step mode · H hint</div>
     </div>
   </main>
   <aside>
-    <h2>GTO 근사 전략</h2>
+    <h2>Strategy estimate</h2>
     <div id="gto"></div>
-    <h2>진행 기록</h2>
+    <h2>Hand log</h2>
     <div id="log"></div>
   </aside>
 </div>

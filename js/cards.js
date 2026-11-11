@@ -1,18 +1,18 @@
 'use strict';
-// 공통 상수, 덱, 족보 판정
+// Shared constants, deck, hand evaluation
 const HEADLESS = typeof document === 'undefined';
 const SB = 10, BB = 20, START = 2000;
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-const CATN = ['하이카드', '원페어', '투페어', '트리플', '스트레이트', '플러시', '풀하우스', '포카드', '스트레이트 플러시'];
-let unitBB = false;    // 칩 수를 BB 단위로 표시
-const fmt = n => unitBB ? (Math.round(n / BB * 10) / 10).toLocaleString('ko-KR') + 'BB' : n.toLocaleString('ko-KR');
+const CATN = ['High card', 'Pair', 'Two pair', 'Three of a kind', 'Straight', 'Flush', 'Full house', 'Four of a kind', 'Straight flush'];
+let unitBB = false;    // show amounts in big blinds
+const fmt = n => unitBB ? (Math.round(n / BB * 10) / 10).toLocaleString('en-US') + 'BB' : n.toLocaleString('en-US');
 const cardText = c => RANKS[c >> 2] + SUITS[c & 3];
-let AUTO = false;      // 테스트용: 사람 자리도 봇이 플레이
+let AUTO = false;      // tests only: a bot plays the human seat
 let speed = 1;
 let hintOn = false;
 
-/* ---------- 카드 / 족보 ---------- */
+/* ---------- Cards / hand ranks ---------- */
 function shuffle(a) {
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -27,7 +27,7 @@ function straightHigh(mask) {
   if ((mask & 0x100F) === 0x100F) return 3; // A-2-3-4-5
   return -1;
 }
-// 2~7장에서 최고 5장 족보를 하나의 숫자로 (클수록 강함)
+// Best 5-card hand out of 2-7 cards, packed into one number (higher is stronger)
 function evalHand(cards) {
   const rc = new Array(13).fill(0), sm = [0, 0, 0, 0], sc = [0, 0, 0, 0];
   let mask = 0;
@@ -68,10 +68,12 @@ function evalHand(cards) {
 }
 function handName(v) {
   const cat = Math.floor(v / 371293), k = Math.floor(v / 28561) % 13;
-  if (cat === 8 && k === 12) return '로열 플러시';
+  if (cat === 8 && k === 12) return 'Royal flush';
   const r = RANKS[k];
-  if (cat === 0) return r + ' 하이';
-  if (cat === 1 || cat === 3 || cat === 7) return r + ' ' + CATN[cat];
-  if (cat === 4 || cat === 8) return r + ' 하이 ' + CATN[cat];
+  if (cat === 0) return r + ' high';
+  if (cat === 1) return 'Pair of ' + r + 's';
+  if (cat === 3) return 'Three ' + r + 's';
+  if (cat === 7) return 'Four ' + r + 's';
+  if (cat === 4 || cat === 8) return r + '-high ' + CATN[cat].toLowerCase();
   return CATN[cat];
 }

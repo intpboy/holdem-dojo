@@ -1,90 +1,90 @@
 # Holdem Dojo
 
-오프라인에서 AI 상대와 혼자 하는 노리밋 텍사스 홀덤입니다. 설치나 서버 없이 `index.html`을 브라우저로 열면 바로 실행됩니다.
+A no-limit Texas Hold'em table you play alone, offline, against AI opponents. There is nothing to install and no server: open `index.html` in a browser and play.
 
-## 실행
+## Run
 
 ```
-index.html 더블클릭
+double-click index.html
 ```
 
-빌드 과정과 외부 라이브러리가 없습니다. 인터넷 연결도 필요 없습니다.
+No build step, no external libraries, no network connection needed.
 
-## 게임 규칙
+## Rules
 
-- 노리밋 텍사스 홀덤, 블라인드 10/20, 시작 칩 2,000 (100BB)
-- 상대 AI 1~5명 (성향이 서로 다름)
-- 칩을 모두 잃으면 아웃. 내가 아웃되면 게임 오버, 상대를 전부 아웃시키면 우승
-- 올인·사이드 팟 정산 지원
-- 핸드가 끝나면 폴드한 패까지 모두 공개
+- No-limit Texas Hold'em, blinds 10/20, 2,000 starting chips (100BB)
+- 1 to 5 AI opponents, each with a different playing style
+- Lose all your chips and you are out. If you bust, the game is over; knock out every opponent to win
+- All-ins and side pots are settled correctly
+- When a hand ends, every hand is revealed, including the folded ones
 
-## 기능
+## Features
 
-- **수동 진행**: AI 액션과 보드 오픈을 키를 누를 때마다 하나씩 진행 (끄면 자동 진행)
-- **성향 통계**: 각 플레이어의 VPIP / PFR / AF를 이름표에 표시
-- **칩 / BB 표시 전환**
-- **전략 패널**: 내 차례에 폴드 / 콜 / 레이즈 빈도와 권장 벳 사이즈 표시
-- **승률 힌트**: 상대 추정 레인지 기준 승률과 팟 오즈
-- 창 크기에 맞춰 테이블이 자동으로 커지는 화면, 전체화면 지원
+- **Step mode**: each AI action and each board card waits for a key press (turn it off for automatic play)
+- **Tendency stats**: VPIP / PFR / AF for every player, shown on their name plate
+- **Chips or BB**: switch how stacks, pots and bets are displayed
+- **Strategy panel**: fold / call / raise frequencies and a suggested bet size on your turn
+- **Equity hint**: your equity against the opponents' estimated ranges, and the pot odds
+- The table scales to the window, with a fullscreen option
 
-## 단축키
+## Keyboard shortcuts
 
-| 키 | 동작 |
+| Key | Action |
 |---|---|
-| `F` | 폴드 |
-| `C` | 체크 / 콜 |
-| `R` | 벳 / 레이즈 (선택된 금액으로) |
-| `1` ~ `6` | 사이즈 선택: 최소 / ⅓팟 / ½팟 / ⅔팟 / 팟 / 올인 |
-| `↑` `↓` | 금액 1BB씩 조절 (`Shift`: 5BB씩) |
-| `Space` / `Enter` | 계속 / 다음 핸드 |
-| `U` | 칩 ↔ BB 표시 |
-| `M` | 수동 진행 켜기/끄기 |
-| `H` | 승률 힌트 켜기/끄기 |
+| `F` | Fold |
+| `C` | Check / call |
+| `R` | Bet / raise (at the selected amount) |
+| `1` to `6` | Pick a size: min / ⅓ pot / ½ pot / ⅔ pot / pot / all-in |
+| `↑` `↓` | Adjust the amount by 1BB (`Shift`: 5BB) |
+| `Space` / `Enter` | Continue / next hand |
+| `U` | Chips ↔ BB |
+| `M` | Toggle step mode |
+| `H` | Toggle the equity hint |
 
-한글 입력 상태에서도 동작합니다.
+Shortcuts use physical key positions, so they work with any keyboard layout or input method.
 
-## AI는 어떻게 판단하나
+## How the AI decides
 
-학습된 모델이나 솔버가 아니라, 포커 이론을 규칙으로 옮긴 봇입니다.
+The bots are not a trained model or a solver. They are poker theory written as rules.
 
-- **레인지 추적**: 모든 플레이어에 대해 "지금까지의 액션으로 볼 때 들고 있을 법한 패"의 분포를 계속 좁혀 갑니다. 봇은 상대의 실제 카드를 보지 않고 이 추정 레인지만 사용합니다.
-- **프리플랍**: 포지션과 상황(오픈, 림프, 3벳, 올인)별 레인지 폭을 정하고, 패의 순위에 따라 폴드/콜/레이즈 빈도를 계산합니다.
-- **벳을 받았을 때**: 팟 오즈가 맞거나, 자기 레인지에서 MDF(최소 방어 빈도) 범위 안에 드는 패면 계속합니다. 벳한 상대가 평소 얼마나 자주 벳하는지에 따라 범위를 넓히거나 좁힙니다.
-- **벳할 때**: 넛급과 블러프는 크게, 중간 밸류는 중간, 얇은 밸류는 작게 칩니다. 블러프 빈도는 밸류 비중과 벳 크기에 맞춥니다.
-- **성향**: 봇마다 타이트함, 공격성, 블러프 빈도가 다릅니다.
+- **Range tracking**: for every player the game keeps a range, the distribution of hands they plausibly hold given their actions so far, and narrows it with each action. Bots never look at an opponent's real cards; they only use these estimated ranges.
+- **Preflop**: range widths are set per position and situation (open, limp, 3-bet, all-in), and the hand's rank decides the fold / call / raise frequencies.
+- **Facing a bet**: a bot continues when the pot odds are right, or when the hand is inside the minimum defense frequency (MDF) share of its own range. It defends wider against players who bet often and tighter against players who rarely bet.
+- **Betting**: big with near-nut hands and bluffs, medium with solid value, small with thin value. Bluff frequency is tied to the share of value hands and the bet size.
+- **Personalities**: bots differ in tightness, aggression and bluff frequency.
 
-### 한계
+### Limitations
 
-- 전략 패널과 봇의 숫자는 근사치이며 솔버 결과와 다를 수 있습니다.
-- 블러프할 패를 고를 때 블로커를 고려하지 않습니다.
-- 프리플랍 패 순위는 Chen 공식 기반의 대략적인 순위입니다.
+- The numbers in the strategy panel and in the bots are approximations and can differ from solver output.
+- Bluffs are chosen by hand strength only; blockers are not considered.
+- Preflop hand ranking is a rough ordering based on the Chen formula.
 
-## 공정성
+## Fairness
 
-- 매 핸드 시작 시 52장을 한 번 섞고(Fisher–Yates), 그 덱에서 순서대로 딜합니다. 진행 중에 덱을 바꾸는 코드는 없습니다.
-- 누가 이기고 있는지에 따라 카드를 조정하는 로직은 없습니다.
-- 난수는 `Math.random()`을 사용합니다.
+- The 52-card deck is shuffled once at the start of each hand (Fisher–Yates) and dealt in order. Nothing changes the deck during a hand.
+- No logic adjusts cards based on who is winning.
+- Randomness comes from `Math.random()`.
 
-## 코드 구조
+## Project layout
 
 ```
-index.html        화면 뼈대
-css/style.css     스타일
-js/cards.js       공통 상수, 덱, 족보 판정
-js/engine.js      게임 진행 (딜, 베팅 라운드, 쇼다운, 사이드 팟, 아웃)
-js/ai.js          레인지 추적, 봇 전략, 전략 패널 계산
-js/ui.js          화면 그리기, 버튼·단축키, 설정
-test/run.js       브라우저 없이 돌리는 테스트
+index.html        page skeleton
+css/style.css     styles
+js/cards.js       shared constants, deck, hand evaluation
+js/engine.js      game flow (dealing, betting rounds, showdown, side pots, eliminations)
+js/ai.js          range tracking, bot strategy, strategy panel math
+js/ui.js          rendering, buttons and shortcuts, settings
+test/run.js       tests that run without a browser
 ```
 
-파일을 더블클릭해도 동작하도록 ES 모듈 대신 일반 스크립트 여러 개로 나눴습니다. 스크립트끼리는 전역 스코프를 공유합니다.
+The code is split into plain scripts rather than ES modules so the game still works when the file is opened by double-click. The scripts share the global scope.
 
-## 테스트
+## Tests
 
-Node.js만 있으면 됩니다.
+Only Node.js is required.
 
 ```
 npm test
 ```
 
-족보 판정, 특정 상황에서의 봇 전략, 그리고 봇끼리 게임을 끝까지 돌렸을 때 칩 합계가 보존되는지를 확인합니다.
+The tests cover hand evaluation, bot strategy in specific spots, and full bot-vs-bot games that check chips are conserved.

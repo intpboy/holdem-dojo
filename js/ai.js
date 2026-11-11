@@ -1,7 +1,7 @@
 'use strict';
-/* ---------- AI: 레인지 기반 전략 ---------- */
-// 모든 플레이어에 대해 "지금까지의 액션으로 볼 때 들고 있을 법한 패"의 분포(레인지)를 추적한다.
-// 봇은 상대의 실제 카드가 아니라 이 레인지만 보고 승률·MDF·벳 사이즈를 계산한다.
+/* ---------- AI: range-based strategy ---------- */
+// For every player we track a range: the distribution of hands they plausibly hold given their actions so far.
+// Bots never look at an opponent's real cards; equity, MDF and bet sizing are computed from these ranges only.
 function chen(cards) {
   const r0 = cards[0] >> 2, r1 = cards[1] >> 2, a = Math.max(r0, r1), b = Math.min(r0, r1);
   const pts = r => r === 12 ? 10 : r === 11 ? 8 : r === 10 ? 7 : r === 9 ? 6 : (r + 2) / 2;
@@ -16,7 +16,7 @@ function chen(cards) {
 const NC = 1326, COMBOS = [];
 for (let a = 0; a < 52; a++) for (let b = a + 1; b < 52; b++) COMBOS.push([a, b]);
 const comboIndex = (a, b) => { if (a > b) { const t = a; a = b; b = t; } return a * (103 - a) / 2 + (b - a - 1); };
-// 각 조합이 프리플랍 기준 상위 몇 %인지 (0 = 최상)
+// Preflop percentile of each combo (0 = best)
 const CPCT = (() => {
   const sc = COMBOS.map(chen), sorted = sc.slice().sort((x, y) => y - x), out = new Float64Array(NC);
   const first = new Map(), cnt = new Map();
@@ -28,7 +28,7 @@ const ss = x => { x = x < 0 ? 0 : x > 1 ? 1 : x; return x * x * (3 - 2 * x); };
 const clamp = (x, lo, hi) => x < lo ? lo : x > hi ? hi : x;
 const NEUTRAL = { tight: 0.5, aggr: 0.6, bluff: 0.1 };
 
-// 새 스트리트: 보드 기준 모든 조합의 족보 순위를 계산해 둠
+// New street: precompute the made-hand rank of every combo on this board
 function streetCache() {
   const rk = G.rank = new Float64Array(NC), ord = [], onB = new Set(G.board);
   for (let k = 0; k < NC; k++) {
@@ -39,7 +39,7 @@ function streetCache() {
   ord.sort((a, b) => rk[a] - rk[b]);
   G.order = ord;
 }
-// 각 조합이 레인지 w를 상대로 현재 보드에서 이기는 비율
+// Fraction of range w that each combo beats on the current board
 function hsVs(w) {
   const out = new Float64Array(NC), ord = G.order, rk = G.rank;
   let tot = 0;
@@ -55,7 +55,7 @@ function hsVs(w) {
   }
   return out;
 }
-// 남아 있는 모든 상대 레인지를 동시에 이기는 비율
+// Chance of beating every remaining opponent's range at once
 function hsAll(i) {
   const out = new Float64Array(NC).fill(1);
   G.players.forEach((q, j) => {
@@ -65,7 +65,7 @@ function hsAll(i) {
   });
   return out;
 }
-// 상대 레인지에서 패를 뽑아 남은 보드까지 돌려 보는 승률
+// Monte Carlo equity: sample opponent hands from their ranges and run out the board
 function equityVsRanges(i, iters) {
   const P = G.players, me = P[i], cums = [];
   P.forEach((q, j) => {
@@ -110,8 +110,8 @@ function equityVsRanges(i, iters) {
   return n ? win / n : 0.5;
 }
 
-// 프리플랍: 포지션·상황별 레인지 폭(rX=레이즈, cX=참여)을 정하고, 패의 순위(pct)로 빈도를 계산
-// w=레인지 폭 배수, ag=레이즈 성향 배수, limpAdd=콜 레인지 추가 (봇 성향용; 기준 모델은 1,1,0)
+// Preflop: pick range widths for the spot (rX = raise, cX = continue), then turn the hand's percentile into frequencies
+// w = range width multiplier, ag = raise multiplier, limpAdd = extra calling range (bot personalities; the baseline model is 1,1,0)
 function preflopModel(i, w, ag, limpAdd) {
   const P = G.players, p = P[i], nAct = P.filter(q => !q.out).length;
   const toCall = Math.min(p.chips, Math.max(0, G.currentBet - p.bet));
@@ -147,7 +147,7 @@ function preflopModel(i, w, ag, limpAdd) {
   cX = Math.max(cX, rX);
   const probs = pct => {
     let raise = inR(pct, rX), call = Math.max(0, inR(pct, cX) - raise), fold = Math.max(0, 1 - raise - call);
-    if (band) { // 콜 레인지 바로 아래 패로 섞는 블러프 3벳/4벳
+    if (band) { // bluff 3-bets/4-bets mixed in from hands just below the calling range
       const b = Math.min(fold, 0.2 * ag * Math.exp(-Math.pow((pct - cX - 0.04) / 0.04, 2)));
       fold -= b; raise += b;
     }
@@ -157,13 +157,13 @@ function preflopModel(i, w, ag, limpAdd) {
   return { probs, size };
 }
 
-// 플랍 이후 "보통의 플레이어"가 패 강도 hN(상대 레인지를 이기는 비율)일 때 각 액션을 할 확률.
-// 다른 사람의 액션을 보고 그 사람의 레인지를 좁히는 데 쓴다.
+// Postflop: how likely a "typical player" is to take each action with hand strength hN (share of opposing ranges beaten).
+// Used to narrow a player's range after seeing their action.
 function pubPost(hN, Sf, type, Sb) {
   const bl = G.board.length === 3 ? 0.35 : G.board.length === 4 ? 0.28 : 0.22;
   const weak = ss((0.35 - hN) / 0.2);
   if (Sf <= 0) {
-    const big = Sb > 0.8, small = Sb > 0 && Sb < 0.4; // 큰 벳은 양극화, 작은 벳은 중간 패도 포함
+    const big = Sb > 0.8, small = Sb > 0 && Sb < 0.4; // big bets are polarized, small bets include medium hands
     const vT = big ? 0.7 : small ? 0.55 : 0.62, mid = big ? 0.04 : small ? 0.22 : 0.1;
     const pBet = mid + (0.78 - mid) * ss((hN - vT + 0.1) / 0.2) + (bl - mid) * weak;
     return type === 'raise' ? pBet : 1 - pBet;
@@ -173,7 +173,7 @@ function pubPost(hN, Sf, type, Sb) {
   const pCont = 0.05 + 0.95 * ss((hN - (0.12 + 0.25 * Math.min(1, Sf))) / 0.3);
   return pCont * (1 - pRaise);
 }
-// 액션 직전에 호출 → 반환된 함수를 액션 후에 불러 그 플레이어의 레인지를 갱신
+// Call right before an action; call the returned function afterwards to update that player's range
 function rangeUpdater(i) {
   const w = G.rng[i], p = G.players[i];
   if (G.street === 'preflop') {
@@ -197,16 +197,16 @@ function rangeUpdater(i) {
   };
 }
 
-// 플랍 이후 전략: 각 액션의 빈도와 벳 사이즈를 계산
+// Postflop strategy: frequency of each action and the bet size
 function postflopPolicy(i, pers) {
   const P = G.players, p = P[i], street = G.board.length;
   const toCall = Math.min(p.chips, Math.max(0, G.currentBet - p.bet)), pot = potTotal();
   const nOpp = Math.max(1, inHand().length - 1), inv = 1 / nOpp;
   const h = hsAll(i), eq = equityVsRanges(i, 300);
-  const hsMe = Math.pow(h[comboIndex(p.cards[0], p.cards[1])], inv); // 지금 보드에서의 강도
-  const sMe = Math.pow(eq, inv);                                     // 남은 카드까지 감안한 강도 (1대1 환산)
+  const hsMe = Math.pow(h[comboIndex(p.cards[0], p.cards[1])], inv); // strength on the current board
+  const sMe = Math.pow(eq, inv);                                     // strength including cards to come (heads-up equivalent)
   const draw = street < 5 && sMe - hsMe > 0.1 && hsMe < 0.5;
-  // 남들이 보는 "내 레인지" 안에서 내 패의 위치 q (0=최상위), 그리고 밸류 핸드 비중
+  // Where this hand sits (q, 0 = top) inside the range others put us on, and the share of value hands
   const w = G.rng[i];
   let tot = 0, above = 0, val = 0;
   for (let k = 0; k < NC; k++) {
@@ -217,11 +217,11 @@ function postflopPolicy(i, pers) {
   const q = tot ? above / tot : 0.5, valueShare = tot ? val / tot : 0.25;
   let fold = 0, call = 0, raise = 0, size = 0;
   if (toCall === 0) {
-    // 사이즈: 넛급과 블러프는 크게(양극화), 중간 밸류는 중간, 얇은 밸류는 작게
+    // Sizing: big with near-nuts and bluffs (polarized), medium with solid value, small with thin value
     const S = sMe > 0.88 || sMe < 0.45 ? (street === 5 ? 1 : 0.75) : sMe > 0.72 ? 0.6 : 0.33;
     let pV = ss((sMe - 0.62) / 0.12) * (0.55 + 0.4 * pers.aggr);
-    if (sMe > 0.9) pV = Math.max(pV, street === 5 ? 0.97 : 0.85); // 넛급은 거의 항상 벳
-    // 블러프 비중 = 밸류 비중 × S/(1+S) (상대가 콜/폴드 무차별해지는 비율), 앞 스트리트일수록 더 많이
+    if (sMe > 0.9) pV = Math.max(pV, street === 5 ? 0.97 : 0.85); // near-nuts almost always bet
+    // Bluff share = value share × S/(1+S) (makes the caller indifferent), with more bluffs on earlier streets
     const mult = (street === 3 ? 1.4 : street === 4 ? 1.2 : 1) * (G.lastAggr === i ? 1.1 : 0.8) * (0.5 + pers.bluff * 5) / Math.pow(nOpp, 0.7);
     const bShare = Math.min(0.5, valueShare * (S / (1 + S)) * mult);
     let pB = 0;
@@ -229,16 +229,16 @@ function postflopPolicy(i, pers) {
     raise = Math.max(pV, pB); call = 1 - raise; size = pot * S;
   } else {
     const alpha = toCall / (pot + toCall), S = toCall / Math.max(1, pot - toCall);
-    // MDF: 이 벳 크기에 블러프가 자동 이득이 되지 않으려면 내 레인지 상위 몇 %로 받아야 하는가
+    // MDF: the top share of our range that must continue so a bluff of this size is not automatically profitable
     const mdf = 1 - Math.pow(S / (1 + S), inv);
-    // 벳한 상대가 평소 얼마나 자주 벳하는지에 따라 더 받아주거나 덜 받아줌
+    // Defend wider or tighter depending on how often the bettor usually bets
     let adapt = 1;
     const b = P[G.lastAggr];
     if (b && b !== p && b.nAgg + b.nPass >= 10) adapt = clamp(1 + (b.nAgg / (b.nAgg + b.nPass) - 0.3) * 1.5, 0.7, 1.35);
     const d = mdf * adapt * (1 + (0.5 - pers.tight) * 0.4) * 0.8;
-    const cont = Math.max(ss((eq - alpha - 0.04) / 0.08 + 0.5), ss((d - q) / 0.08 + 0.5)); // 팟 오즈가 맞거나, MDF 범위 안이면 계속
+    const cont = Math.max(ss((eq - alpha - 0.04) / 0.08 + 0.5), ss((d - q) / 0.08 + 0.5)); // continue when pot odds are right or the hand is inside the MDF range
     let pR = ss((sMe - 0.72) / 0.12) * (0.45 + 0.4 * pers.aggr);
-    if (sMe > 0.9) pR = Math.max(pR, street === 5 ? 0.97 : 0.85); // 넛급은 거의 항상 레이즈 (리레이즈 싸움도 계속)
+    if (sMe > 0.9) pR = Math.max(pR, street === 5 ? 0.97 : 0.85); // near-nuts almost always raise (and keep re-raising)
     else if (p.raises >= 2) pR = 0;
     const pBR = (p.raises >= 1 || toCall > p.chips * 0.25) ? 0 : Math.min(0.3, (draw ? 0.15 : 0.035) * (pers.bluff / 0.1));
     raise = pR + (1 - pR) * pBR;
@@ -265,7 +265,7 @@ function botAction(i) {
   return r < pol.raise + pol.call ? { type: 'call' } : { type: 'fold' };
 }
 
-// 내 차례에 보여 줄 전략 (봇과 같은 계산, 중립 성향)
+// Strategy shown on the human's turn (same math as the bots, neutral personality)
 function gtoAdvice(canRaise, minTo) {
   const me = G.players[0], maxTo = me.bet + me.chips;
   const toCall = Math.min(me.chips, Math.max(0, G.currentBet - me.bet));
